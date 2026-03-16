@@ -57,7 +57,28 @@ def extract_book_metadata(image_b64: str):
                     {
                         # Instruction to the model
                         "type": "input_text",
-                        "text": "Extract title, author, and publisher from this book image. Return JSON."
+                        "text": """
+You are extracting structured metadata from a book image.
+
+Extract the following fields:
+- title
+- author
+- publisher
+
+Rules:
+- Return ONLY valid JSON (no markdown, no explanations)
+- If a field is not visible, return null
+- Do not guess or hallucinate
+- Prefer clearly printed text (ignore blur/noise)
+- If multiple authors exist, return as a comma-separated string
+
+Output format:
+{
+  "title": "...",
+  "author": "...",
+  "publisher": "..."
+}
+"""
                     },
                     {
                         # Image passed as base64 data URL
