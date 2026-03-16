@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile
 
 app = FastAPI()   # Create my API application
 
@@ -6,7 +6,7 @@ app = FastAPI()   # Create my API application
 
 # @app → attach this to your app
 # .get → when someone requests data
-# "/" → the root path (like homepage)
+# "/anklib" → the root path (like homepage)
 
 def home():
     """
@@ -23,11 +23,15 @@ def home():
 
 
 
+@app.post("/ankita/extract")
+async def extract(file: UploadFile = File(...)):  # The function is doing I/O work (reading a file, calling APIs later)
+	content = await file.read()
+	return {
+		"filename": file.filename,
+		"size": len(content)
+		}
 
-# Note:
-# Note: The full URL that you open in browser to trigger it
-# http://127.0.0.1:8000/hello
-# http:// → protocol
-# 127.0.0.1 → your own computer (localhost)
-# :8000 → port where your server is running
-# / → the route you defined
+
+# Notes on Async:
+# What is I/O? Reading file, calling GPT, database calls. These are slow operations.
+# Why async helps? Instead of: “Wait here until file read finishes.” It says: “While waiting, go handle other requests”
