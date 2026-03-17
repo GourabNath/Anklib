@@ -1,164 +1,34 @@
-"""
-Anklib - Book Metadata Extraction API
-
-Step 2:
-- Accept image upload
-- Convert image to base64
-- Send image to GPT (LLM)
-- Extract structured metadata (title, author, publisher)
-- Return clean JSON response
-"""
-
 from fastapi import FastAPI, File, UploadFile
-from openai import OpenAI
-import base64
-import json
+from services.extractor import extract_book_metadata
+from utils.image import encode_image
 
-# Initialize FastAPI application
 app = FastAPI()
-
-# Initialize OpenAI client (uses API key from environment)
-client = OpenAI()
 
 
 @app.get("/anklib")
 def home():
-    """
-    Health check endpoint
-
-    Purpose:
-    - Verify API is running
-    - Simple test route
-
-    URL:
-    http://127.0.0.1:8000/anklib
-    """
-    return {"message": "Welcome to Anklib API"}
-
-
-import re
-
-def clean_isbn(isbn):
-    if not isbn:
-        return None
-    return re.sub(r"[^0-9Xx]", "", isbn)
-
-
-
-def extract_book_metadata(image_b64: str):
-    """
-    Calls GPT to extract book metadata from an image
-
-    Parameters:
-    - image_b64 (str): Base64 encoded image string
-
-    Returns:
-    - dict: Extracted metadata (title, author, publisher)
-    """
-
-    # Send request to GPT with both text instruction and image
-    response = client.responses.create(
-        model="gpt-5.2",
-        input=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        # Instruction to the model
-                        "type": "input_text",
-                        "text": """
-You are extracting structured metadata from a book image.
-
-Extract the following fields:
-- title
-- author
-- publisher
-- isbn
-- edition
-- price
-
-Rules:
-- Return ONLY valid JSON (no markdown, no explanations)
-- If a field is not visible, return null
-- Do not guess or hallucinate
-- Prefer clearly printed text (ignore blur/noise)
-- If multiple authors exist, return as a comma-separated string
-
-Field-specific rules:
-- isbn: Extract ISBN-10 or ISBN-13 (numbers only, remove dashes/spaces)
-- edition: Capture edition info like "2nd Edition", "Third Edition"
-- price: Capture price with currency if visible (e.g., "₹499", "$20")
-
-Output format:
-{
-  "title": "...",
-  "author": "...",
-  "publisher": "...",
-  "isbn": "...",
-  "edition": "...",
-  "price": "..."
-}
-"""
-                    },
-                    {
-                        # Image passed as base64 data URL
-                        "type": "input_image",
-                        "image_url": f"data:image/jpeg;base64,{image_b64}"
-                    }
-                ]
-            }
-        ]
-    )
-
-    # Attempt to parse model output into JSON
-    try:
-        # Remove extra whitespace
-        text = response.output_text.strip()
-
-        # Remove markdown formatting if model returns ```json ... ```
-        if text.startswith("```"):
-            text = text.replace("```json", "").replace("```", "").strip()
-
-        # Convert string → dictionary
-        data = json.loads(text)
-
-        # Ensure all fields exist
-        expected_fields = ["title", "author", "publisher", "isbn", "edition", "price"]
-
-        for field in expected_fields:
-             data.setdefault(field, None)
-
-    except Exception:
-        # Fallback: return raw output if parsing fails
-        data = {"raw_output": response.output_text}
-        data["isbn"] = clean_isbn(data.get("isbn"))
-
-    return data
+    return {"message": "Welcome to Anklib API 🚀"}
 
 
 @app.post("/anklib/extract")
 async def extract(file: UploadFile = File(...)):
-    """
-    Main endpoint for book metadata extraction
 
-    Input:
-    - file: Uploaded image (book cover / ISBN page)
+    if not file.content_type.startswith("image/"):
+        return {"error": "Only image files are supported"}
 
-    Workflow:
-    1. Read uploaded file
-    2. Convert image to base64
-    3. Send to LLM for extraction
-    4. Return structured metadata
-    """
+    try:
+        content = await file.read()
+        image_b64 = encode_image(content)
 
-    # Step 1: Read file content as bytes
-    content = await file.read()
+        result = extract_book_metadata(image_b64)
 
-    # Step 2: Convert bytes → base64 string (required for GPT input)
-    image_b64 = base64.b64encode(content).decode("utf-8")
+        return {
+            "status": "success",
+            "data": result
+        }
 
-    # Step 3: Extract metadata using helper function
-    result = extract_book_metadata(image_b64)
-
-    # Step 4: Return structured response
-    return result
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
