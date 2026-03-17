@@ -113,6 +113,12 @@ Output format:
         # Convert string → dictionary
         data = json.loads(text)
 
+        # Ensure all fields exist
+        expected_fields = ["title", "author", "publisher", "isbn", "edition", "price"]
+
+        for field in expected_fields:
+             data.setdefault(field, None)
+
     except Exception:
         # Fallback: return raw output if parsing fails
         data = {"raw_output": response.output_text}
