@@ -64,6 +64,9 @@ Extract the following fields:
 - title
 - author
 - publisher
+- isbn
+- edition
+- price
 
 Rules:
 - Return ONLY valid JSON (no markdown, no explanations)
@@ -72,11 +75,19 @@ Rules:
 - Prefer clearly printed text (ignore blur/noise)
 - If multiple authors exist, return as a comma-separated string
 
+Field-specific rules:
+- isbn: Extract ISBN-10 or ISBN-13 (numbers only, remove dashes/spaces)
+- edition: Capture edition info like "2nd Edition", "Third Edition"
+- price: Capture price with currency if visible (e.g., "₹499", "$20")
+
 Output format:
 {
   "title": "...",
   "author": "...",
-  "publisher": "..."
+  "publisher": "...",
+  "isbn": "...",
+  "edition": "...",
+  "price": "..."
 }
 """
                     },
