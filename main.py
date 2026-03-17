@@ -33,7 +33,16 @@ def home():
     URL:
     http://127.0.0.1:8000/anklib
     """
-    return {"message": "Welcome to Anklib API 🚀"}
+    return {"message": "Welcome to Anklib API"}
+
+
+import re
+
+def clean_isbn(isbn):
+    if not isbn:
+        return None
+    return re.sub(r"[^0-9Xx]", "", isbn)
+
 
 
 def extract_book_metadata(image_b64: str):
@@ -122,6 +131,7 @@ Output format:
     except Exception:
         # Fallback: return raw output if parsing fails
         data = {"raw_output": response.output_text}
+        data["isbn"] = clean_isbn(data.get("isbn"))
 
     return data
 
