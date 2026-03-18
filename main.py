@@ -121,12 +121,17 @@ def ui():
                 }
 
                 pre {
-                    text-align: left;
-                    background: #f9f9f9;
-                    padding: 15px;
-                    border-radius: 8px;
-                    line-height: 1.6;
-                }
+    text-align: left;
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 8px;
+    line-height: 1.6;
+
+    /*CRITICAL: enable wrapping */
+    white-space: pre-wrap;       /* preserves formatting but allows wrap */
+    word-wrap: break-word;       /* breaks long words */
+    overflow-wrap: break-word;   /* modern standard */
+}
 
                 img {
                     max-width: 100%;
