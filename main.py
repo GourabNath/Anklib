@@ -50,7 +50,6 @@ def ui():
         <head>
             <title>Anklib</title>
 
-            <!-- Mobile responsiveness -->
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
             <style>
@@ -70,7 +69,7 @@ def ui():
                     box-shadow: 0 0 10px rgba(0,0,0,0.1);
                 }
 
-                /* Primary action button */
+                /* Green button */
                 button {
                     background-color: #4CAF50;
                     color: white;
@@ -89,54 +88,69 @@ def ui():
                     background-color: #999;
                 }
 
-                /* Custom upload button */
+                /* Blue upload button */
                 .upload-btn {
-    display: block;              /* makes it behave like button */
-    background-color: #2196F3;
-    color: white;
-
-    padding: 16px;               /* same as green button */
-    font-size: 18px;
-    font-weight: bold;
-
-    border-radius: 10px;
-    cursor: pointer;
-
-    width: 100%;                 /* same width */
-    max-width: 400px;
-
-    margin: 15px auto 0 auto;    /* center align like button */
-    box-sizing: border-box;      /* ensures same sizing calculation */
-}
+                    display: block;
+                    background-color: #2196F3;
+                    color: white;
+                    padding: 16px;
+                    font-size: 18px;
+                    font-weight: bold;
+                    border-radius: 10px;
+                    cursor: pointer;
+                    width: 100%;
+                    max-width: 400px;
+                    margin: 15px auto 0 auto;
+                    box-sizing: border-box;
+                }
 
                 .upload-btn:hover {
                     background-color: #1976D2;
                 }
 
-                /* File name display */
                 .file-name {
                     margin-top: 10px;
                     font-size: 14px;
                     color: #555;
                 }
 
-                pre {
-    text-align: left;
-    background: #f9f9f9;
-    padding: 15px;
-    border-radius: 8px;
-    line-height: 1.6;
-
-    /*CRITICAL: enable wrapping */
-    white-space: pre-wrap;       /* preserves formatting but allows wrap */
-    word-wrap: break-word;       /* breaks long words */
-    overflow-wrap: break-word;   /* modern standard */
-}
-
                 img {
                     max-width: 100%;
                     margin-top: 10px;
                     border-radius: 5px;
+                }
+
+                /* ✅ Result box (NEW STYLE) */
+                #resultBox {
+                    text-align: center;
+                    background: #f9f9f9;
+                    padding: 20px;
+                    border-radius: 10px;
+                    margin-top: 10px;
+                }
+
+                /* Each field block */
+                .field-block {
+                    margin-bottom: 20px;
+                }
+
+                /* Label (Title, Author...) */
+                .field-label {
+                    font-size: 14px;
+                    font-weight: bold;
+                    color: #777;
+                }
+
+                /* Value */
+                .field-value {
+                    font-size: 18px;
+                    font-weight: 500;
+                    color: #222;
+                    margin-top: 5px;
+
+                    /* Ensure long text wraps properly */
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
                 }
             </style>
         </head>
@@ -146,61 +160,49 @@ def ui():
                 <h2>📚 Anklib</h2>
                 <p>Upload a book image to extract metadata</p>
 
-                <!-- Custom upload button -->
                 <label for="fileInput" class="upload-btn">
                     📸 Choose or Capture Image
                 </label>
 
-                <!-- Hidden actual input -->
                 <input id="fileInput" type="file" accept="image/*" capture="environment"
                        onchange="handleFileSelect()" style="display:none;">
 
-                <!-- File name display -->
                 <div id="fileName" class="file-name">No file selected</div>
 
-                <!-- Image preview -->
                 <img id="preview" style="display:none;" />
 
-                <!-- Extract button -->
                 <button id="extractBtn" onclick="uploadFile()">Extract Metadata</button>
 
                 <h3>Result:</h3>
-                <pre id="resultBox">No result yet</pre>
+                <!-- ✅ switched from <pre> to <div> -->
+                <div id="resultBox">No result yet</div>
             </div>
 
             <script>
 
-                // Handle file selection + preview + filename display
                 function handleFileSelect() {
-
                     const file = document.getElementById('fileInput').files[0];
                     const preview = document.getElementById('preview');
                     const fileName = document.getElementById('fileName');
 
                     if (file) {
-                        // Show preview
                         preview.src = URL.createObjectURL(file);
                         preview.style.display = "block";
-
-                        // Show file name
                         fileName.textContent = "Selected: " + file.name;
                     }
                 }
 
-                // Main extraction function
                 async function uploadFile() {
 
                     const fileInput = document.getElementById('fileInput');
                     const file = fileInput.files[0];
                     const button = document.getElementById("extractBtn");
 
-                    // Prevent empty submission
                     if (!file) {
                         alert("Please select a file");
                         return;
                     }
 
-                    // UI loading state
                     button.disabled = true;
                     button.textContent = "Processing...";
                     document.getElementById("resultBox").textContent = "Processing...";
@@ -221,15 +223,24 @@ def ui():
                         const data = await response.json();
                         const book = data.data;
 
-                        // Build user-friendly output
+                        // Helper to create field blocks
+                        function createField(label, value) {
+                            return `
+                                <div class="field-block">
+                                    <div class="field-label">${label}</div>
+                                    <div class="field-value">${value}</div>
+                                </div>
+                            `;
+                        }
+
                         let output = "";
 
-                        if (book.title) output += "<b>Title:</b> " + book.title + "<br><br>";
-                        if (book.author) output += "<b>Author:</b> " + book.author + "<br><br>";
-                        if (book.publisher) output += "<b>Publisher:</b> " + book.publisher + "<br><br>";
-                        if (book.isbn) output += "<b>ISBN:</b> " + book.isbn + "<br><br>";
-                        if (book.edition) output += "<b>Edition:</b> " + book.edition + "<br><br>";
-                        if (book.price) output += "<b>Price:</b> " + book.price + "<br><br>";
+                        if (book.title) output += createField("Title", book.title);
+                        if (book.author) output += createField("Author", book.author);
+                        if (book.publisher) output += createField("Publisher", book.publisher);
+                        if (book.isbn) output += createField("ISBN", book.isbn);
+                        if (book.edition) output += createField("Edition", book.edition);
+                        if (book.price) output += createField("Price", book.price);
 
                         document.getElementById("resultBox").innerHTML = output;
 
@@ -250,7 +261,6 @@ def ui():
         </body>
     </html>
     """
-
 
 
 if __name__ == "__main__":
