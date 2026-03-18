@@ -91,18 +91,23 @@ def ui():
 
                 /* Custom upload button */
                 .upload-btn {
-                    display: inline-block;
-                    background-color: #2196F3;
-                    color: white;
-                    padding: 16px;
-                    font-size: 18px;
-                    font-weight: bold;
-                    border-radius: 10px;
-                    cursor: pointer;
-                    width: 100%;
-                    max-width: 400px;
-                    margin-top: 10px;
-                }
+    display: block;              /* makes it behave like button */
+    background-color: #2196F3;
+    color: white;
+
+    padding: 16px;               /* same as green button */
+    font-size: 18px;
+    font-weight: bold;
+
+    border-radius: 10px;
+    cursor: pointer;
+
+    width: 100%;                 /* same width */
+    max-width: 400px;
+
+    margin: 15px auto 0 auto;    /* center align like button */
+    box-sizing: border-box;      /* ensures same sizing calculation */
+}
 
                 .upload-btn:hover {
                     background-color: #1976D2;
