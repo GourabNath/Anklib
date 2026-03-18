@@ -67,13 +67,26 @@ def ui():
                 }
 
                 button {
-                    background-color: #4CAF50;
-                    color: white;
-                    padding: 10px 20px;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                }
+    background-color: #4CAF50;
+    color: white;
+
+    /* Bigger size for mobile */
+    padding: 14px 24px;
+    font-size: 16px;
+    font-weight: bold;
+
+    border: none;
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    /* Make button full-width on small screens */
+    width: 100%;
+    max-width: 300px;
+
+    /* Add spacing */
+    margin-top: 10px;
+}
 
                 pre {
                     text-align: left;
