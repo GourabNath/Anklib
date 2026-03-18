@@ -42,63 +42,91 @@ async def extract(file: UploadFile = File(...)):
         }
 
 
+
 @app.get("/", response_class=HTMLResponse)
 def ui():
-    # Serve frontend UI
     return """
     <html>
         <head>
             <title>Anklib</title>
+
+            <!-- Mobile responsiveness -->
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
             <style>
                 body {
-                    font-family: Arial;
+                    font-family: Arial, sans-serif;
                     background-color: #f5f5f5;
                     text-align: center;
-                    padding: 40px;
+                    padding: 20px;
                 }
 
                 .container {
                     background: white;
-                    padding: 20px;
-                    border-radius: 10px;
+                    padding: 25px;
+                    border-radius: 12px;
                     max-width: 500px;
                     margin: auto;
                     box-shadow: 0 0 10px rgba(0,0,0,0.1);
                 }
 
+                /* Primary action button */
                 button {
-    background-color: #4CAF50;
-    color: white;
+                    background-color: #4CAF50;
+                    color: white;
+                    padding: 16px;
+                    font-size: 18px;
+                    font-weight: bold;
+                    border: none;
+                    border-radius: 10px;
+                    width: 100%;
+                    max-width: 400px;
+                    margin-top: 15px;
+                    cursor: pointer;
+                }
 
-    /* Bigger size for mobile */
-    padding: 14px 24px;
-    font-size: 16px;
-    font-weight: bold;
+                button:disabled {
+                    background-color: #999;
+                }
 
-    border: none;
-    border-radius: 8px;
+                /* Custom upload button */
+                .upload-btn {
+                    display: inline-block;
+                    background-color: #2196F3;
+                    color: white;
+                    padding: 16px;
+                    font-size: 18px;
+                    font-weight: bold;
+                    border-radius: 10px;
+                    cursor: pointer;
+                    width: 100%;
+                    max-width: 400px;
+                    margin-top: 10px;
+                }
 
-    cursor: pointer;
+                .upload-btn:hover {
+                    background-color: #1976D2;
+                }
 
-    /* Make button full-width on small screens */
-    width: 100%;
-    max-width: 300px;
-
-    /* Add spacing */
-    margin-top: 10px;
-}
+                /* File name display */
+                .file-name {
+                    margin-top: 10px;
+                    font-size: 14px;
+                    color: #555;
+                }
 
                 pre {
-    text-align: left;
-    background: #f9f9f9;
-    padding: 15px;
-    border-radius: 8px;
-    line-height: 1.6;
-}
+                    text-align: left;
+                    background: #f9f9f9;
+                    padding: 15px;
+                    border-radius: 8px;
+                    line-height: 1.6;
+                }
 
                 img {
                     max-width: 100%;
                     margin-top: 10px;
+                    border-radius: 5px;
                 }
             </style>
         </head>
@@ -108,16 +136,22 @@ def ui():
                 <h2>📚 Anklib</h2>
                 <p>Upload a book image to extract metadata</p>
 
-                <!-- File input with camera support -->
-                <input id="fileInput" type="file" accept="image/*" capture="environment" onchange="previewImage()">
-                <br><br>
+                <!-- Custom upload button -->
+                <label for="fileInput" class="upload-btn">
+                    📸 Choose or Capture Image
+                </label>
+
+                <!-- Hidden actual input -->
+                <input id="fileInput" type="file" accept="image/*" capture="environment"
+                       onchange="handleFileSelect()" style="display:none;">
+
+                <!-- File name display -->
+                <div id="fileName" class="file-name">No file selected</div>
 
                 <!-- Image preview -->
                 <img id="preview" style="display:none;" />
 
-                <br>
-
-                <!-- IMPORTANT: added id so JS can control button -->
+                <!-- Extract button -->
                 <button id="extractBtn" onclick="uploadFile()">Extract Metadata</button>
 
                 <h3>Result:</h3>
@@ -126,21 +160,25 @@ def ui():
 
             <script>
 
-                // Preview selected image
-                function previewImage() {
+                // Handle file selection + preview + filename display
+                function handleFileSelect() {
+
                     const file = document.getElementById('fileInput').files[0];
                     const preview = document.getElementById('preview');
+                    const fileName = document.getElementById('fileName');
 
                     if (file) {
+                        // Show preview
                         preview.src = URL.createObjectURL(file);
                         preview.style.display = "block";
+
+                        // Show file name
+                        fileName.textContent = "Selected: " + file.name;
                     }
                 }
 
-                // Main function triggered on button click
+                // Main extraction function
                 async function uploadFile() {
-
-                    console.log("Button clicked"); // Debug (safe, no popup)
 
                     const fileInput = document.getElementById('fileInput');
                     const file = fileInput.files[0];
@@ -152,7 +190,7 @@ def ui():
                         return;
                     }
 
-                    // UI: loading state
+                    // UI loading state
                     button.disabled = true;
                     button.textContent = "Processing...";
                     document.getElementById("resultBox").textContent = "Processing...";
@@ -161,7 +199,7 @@ def ui():
                         const formData = new FormData();
                         formData.append("file", file);
 
-                        const response = await fetch("/anklib/extract", {
+                        const response = await fetch(window.location.origin + "/anklib/extract", {
                             method: "POST",
                             body: formData
                         });
@@ -171,40 +209,19 @@ def ui():
                         }
 
                         const data = await response.json();
+                        const book = data.data;
 
-                        // Extract structured data from response
-const book = data.data;
+                        // Build user-friendly output
+                        let output = "";
 
-// Build clean HTML output (user-friendly instead of JSON)
-let output = "";
+                        if (book.title) output += "<b>Title:</b> " + book.title + "<br><br>";
+                        if (book.author) output += "<b>Author:</b> " + book.author + "<br><br>";
+                        if (book.publisher) output += "<b>Publisher:</b> " + book.publisher + "<br><br>";
+                        if (book.isbn) output += "<b>ISBN:</b> " + book.isbn + "<br><br>";
+                        if (book.edition) output += "<b>Edition:</b> " + book.edition + "<br><br>";
+                        if (book.price) output += "<b>Price:</b> " + book.price + "<br><br>";
 
-// Only show fields if they exist (avoids empty clutter)
-if (book.title) {
-    output += "<b>Title:</b> " + book.title + "<br><br>";
-}
-
-if (book.author) {
-    output += "<b>Author:</b> " + book.author + "<br><br>";
-}
-
-if (book.publisher) {
-    output += "<b>Publisher:</b> " + book.publisher + "<br><br>";
-}
-
-if (book.isbn) {
-    output += "<b>ISBN:</b> " + book.isbn + "<br><br>";
-}
-
-if (book.edition) {
-    output += "<b>Edition:</b> " + book.edition + "<br><br>";
-}
-
-if (book.price) {
-    output += "<b>Price:</b> " + book.price + "<br><br>";
-}
-
-// Inject formatted HTML into UI
-document.getElementById("resultBox").innerHTML = output;
+                        document.getElementById("resultBox").innerHTML = output;
 
                     } catch (error) {
 
@@ -213,7 +230,6 @@ document.getElementById("resultBox").innerHTML = output;
 
                     } finally {
 
-                        // Reset button
                         button.disabled = false;
                         button.textContent = "Extract Metadata";
                     }
@@ -224,6 +240,7 @@ document.getElementById("resultBox").innerHTML = output;
         </body>
     </html>
     """
+
 
 
 if __name__ == "__main__":
