@@ -3,61 +3,55 @@ from fastapi.responses import HTMLResponse
 from services.extractor import extract_book_metadata
 from utils.image import encode_image
 
-# Initialize FastAPI application (entry point of the API)
+# Initialize FastAPI app
 app = FastAPI()
 
 
 @app.get("/anklib")
 def home():
-    # Simple health check endpoint to verify API is running
+    # Health check endpoint
     return {"message": "Welcome to Anklib API"}
 
 
 @app.post("/anklib/extract")
 async def extract(file: UploadFile = File(...)):
 
-    # Validate that the uploaded file is an image
-    # Prevents sending unsupported file types to the LLM pipeline
+    # Ensure uploaded file is an image
     if not file.content_type.startswith("image/"):
         return {"error": "Only image files are supported"}
 
     try:
-        # Read uploaded image bytes (needed before encoding for LLM input)
+        # Read file bytes
         content = await file.read()
 
-        # Convert image bytes → base64 string (required for OpenAI image input)
+        # Convert image to base64
         image_b64 = encode_image(content)
 
-        # Call extraction service (LLM handles metadata extraction)
+        # Extract metadata using LLM service
         result = extract_book_metadata(image_b64)
 
-        # Return structured response to frontend
         return {
             "status": "success",
             "data": result
         }
 
     except Exception as e:
-        # Catch unexpected errors and return safe error response
-        # Prevents API crash and helps debugging
         return {
             "status": "error",
             "message": str(e)
         }
 
 
-
 @app.get("/", response_class=HTMLResponse)
 def ui():
-    # Serves a simple frontend UI directly from FastAPI
-    # Allows users to upload images and view results without separate frontend app
+    # Serve frontend UI
     return """
     <html>
         <head>
             <title>Anklib</title>
             <style>
                 body {
-                    font-family: Arial, sans-serif;
+                    font-family: Arial;
                     background-color: #f5f5f5;
                     text-align: center;
                     padding: 40px;
@@ -81,22 +75,16 @@ def ui():
                     cursor: pointer;
                 }
 
-                button:hover {
-                    background-color: #45a049;
-                }
-
                 pre {
                     text-align: left;
                     background: #eee;
                     padding: 10px;
                     border-radius: 5px;
-                    overflow-x: auto;
                 }
 
                 img {
                     max-width: 100%;
                     margin-top: 10px;
-                    border-radius: 5px;
                 }
             </style>
         </head>
@@ -106,25 +94,26 @@ def ui():
                 <h2>📚 Anklib</h2>
                 <p>Upload a book image to extract metadata</p>
 
-                <!-- File input allows selecting image from device or camera (mobile-friendly) -->
+                <!-- File input with camera support -->
                 <input id="fileInput" type="file" accept="image/*" capture="environment" onchange="previewImage()">
                 <br><br>
 
-                <!-- Preview selected image before upload -->
+                <!-- Image preview -->
                 <img id="preview" style="display:none;" />
 
                 <br>
-                <!-- Trigger extraction without page reload -->
-                <button onclick="uploadFile()">Extract Metadata</button>
+
+                <!-- IMPORTANT: added id so JS can control button -->
+                <button id="extractBtn" onclick="uploadFile()">Extract Metadata</button>
 
                 <h3>Result:</h3>
-                <!-- Display formatted JSON response -->
                 <pre id="resultBox">No result yet</pre>
             </div>
 
             <script>
+
+                // Preview selected image
                 function previewImage() {
-                    // Show preview of selected image for better user experience
                     const file = document.getElementById('fileInput').files[0];
                     const preview = document.getElementById('preview');
 
@@ -134,81 +123,63 @@ def ui():
                     }
                 }
 
+                // Main function triggered on button click
                 async function uploadFile() {
 
-    // Get reference to file input element in UI
-    const fileInput = document.getElementById('fileInput');
+                    console.log("Button clicked"); // Debug (safe, no popup)
 
-    // Extract the first selected file (user may upload only one)
-    const file = fileInput.files[0];
+                    const fileInput = document.getElementById('fileInput');
+                    const file = fileInput.files[0];
+                    const button = document.getElementById("extractBtn");
 
-    // Get button element so we can control its state (disable/enable, text change)
-    const button = document.querySelector("button");
+                    // Prevent empty submission
+                    if (!file) {
+                        alert("Please select a file");
+                        return;
+                    }
 
-    // Guard clause: prevent API call if no file is selected
-    if (!file) {
-        alert("Please select a file");
-        return;
-    }
+                    // UI: loading state
+                    button.disabled = true;
+                    button.textContent = "Processing...";
+                    document.getElementById("resultBox").textContent = "Processing...";
 
-    // Create form data object to send file as multipart/form-data
-    // This is required for file uploads via fetch
-    const formData = new FormData();
-    formData.append("file", file);
+                    try {
+                        const formData = new FormData();
+                        formData.append("file", file);
 
-    // ---- UI STATE: START PROCESSING ----
-    // Disable button to prevent duplicate requests
-    button.disabled = true;
+                        const response = await fetch("/anklib/extract", {
+                            method: "POST",
+                            body: formData
+                        });
 
-    // Provide immediate feedback to user
-    button.textContent = "Processing...";
+                        if (!response.ok) {
+                            throw new Error("Server error: " + response.status);
+                        }
 
-    // Show interim message in result box
-    document.getElementById("resultBox").textContent = "Processing...";
+                        const data = await response.json();
 
-    try {
-        // Make POST request to backend endpoint
-        const response = await fetch("/anklib/extract", {
-            method: "POST",
-            body: formData
-        });
+                        document.getElementById("resultBox").textContent =
+                            JSON.stringify(data, null, 2);
 
-        // Check if response status is not OK (e.g., 400, 500)
-        // fetch does NOT throw errors automatically for HTTP failures
-        if (!response.ok) {
-            throw new Error("Server error: " + response.status);
-        }
+                    } catch (error) {
 
-        // Parse JSON response from backend
-        const data = await response.json();
+                        document.getElementById("resultBox").textContent =
+                            "❌ Error: " + error.message;
 
-        // Display formatted JSON result for readability
-        document.getElementById("resultBox").textContent =
-            JSON.stringify(data, null, 2);
+                    } finally {
 
-    } catch (error) {
+                        // Reset button
+                        button.disabled = false;
+                        button.textContent = "Extract Metadata";
+                    }
+                }
 
-        // Catch covers:
-        // - network failures
-        // - backend crashes
-        // - invalid JSON parsing
-        // Show user-friendly error message
-        document.getElementById("resultBox").textContent =
-            "❌ Error: " + error.message;
+            </script>
 
-    } finally {
+        </body>
+    </html>
+    """
 
-        // ---- UI STATE: RESET ----
-        // This block ALWAYS runs (success or failure)
-
-        // Re-enable button so user can retry
-        button.disabled = false;
-
-        // Restore original button text
-        button.textContent = "Extract Metadata";
-    }
-}
-"""
 
 if __name__ == "__main__":
     import uvicorn
