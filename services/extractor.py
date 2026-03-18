@@ -20,7 +20,7 @@ def extract_book_metadata(image_b64: str):
                 "content": [
                     {
                         "type": "input_text",
-                        "text": "text": """
+                        "text": """
 You are extracting structured metadata from a book image.
 
 Extract the following fields:
@@ -30,6 +30,7 @@ Extract the following fields:
 - isbn
 - edition
 - price
+
 
 Rules:
 - Return ONLY valid JSON (no markdown, no explanations)
