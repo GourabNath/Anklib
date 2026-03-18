@@ -135,54 +135,80 @@ def ui():
                 }
 
                 async function uploadFile() {
-    // Get the file input element
+
+    // Get reference to file input element in UI
     const fileInput = document.getElementById('fileInput');
 
-    // Get the selected file (first file from input)
+    // Extract the first selected file (user may upload only one)
     const file = fileInput.files[0];
 
-    // Get the button element to control its state (disable/enable)
+    // Get button element so we can control its state (disable/enable, text change)
     const button = document.querySelector("button");
 
-    // Guard clause: stop if no file is selected
+    // Guard clause: prevent API call if no file is selected
     if (!file) {
         alert("Please select a file");
         return;
     }
 
-    // Prepare form data for sending file to backend
+    // Create form data object to send file as multipart/form-data
+    // This is required for file uploads via fetch
     const formData = new FormData();
     formData.append("file", file);
 
-    // UI FEEDBACK: indicate processing has started
-    button.disabled = true;                 // prevent multiple clicks
-    button.textContent = "Processing...";   // update button text
+    // ---- UI STATE: START PROCESSING ----
+    // Disable button to prevent duplicate requests
+    button.disabled = true;
 
-    // Show immediate feedback in result box
+    // Provide immediate feedback to user
+    button.textContent = "Processing...";
+
+    // Show interim message in result box
     document.getElementById("resultBox").textContent = "Processing...";
 
-    // Send POST request to backend endpoint
-    const response = await fetch("/anklib/extract", {
-        method: "POST",
-        body: formData
-    });
+    try {
+        // Make POST request to backend endpoint
+        const response = await fetch("/anklib/extract", {
+            method: "POST",
+            body: formData
+        });
 
-    // Parse JSON response from backend
-    const data = await response.json();
+        // Check if response status is not OK (e.g., 400, 500)
+        // fetch does NOT throw errors automatically for HTTP failures
+        if (!response.ok) {
+            throw new Error("Server error: " + response.status);
+        }
 
-    // Display formatted JSON result in UI
-    document.getElementById("resultBox").textContent =
-        JSON.stringify(data, null, 2);
+        // Parse JSON response from backend
+        const data = await response.json();
 
-    // RESET UI: restore button to original state
-    button.disabled = false;
-    button.textContent = "Extract Metadata";
+        // Display formatted JSON result for readability
+        document.getElementById("resultBox").textContent =
+            JSON.stringify(data, null, 2);
+
+    } catch (error) {
+
+        // Catch covers:
+        // - network failures
+        // - backend crashes
+        // - invalid JSON parsing
+        // Show user-friendly error message
+        document.getElementById("resultBox").textContent =
+            "❌ Error: " + error.message;
+
+    } finally {
+
+        // ---- UI STATE: RESET ----
+        // This block ALWAYS runs (success or failure)
+
+        // Re-enable button so user can retry
+        button.disabled = false;
+
+        // Restore original button text
+        button.textContent = "Extract Metadata";
+    }
 }
-            </script>
-        </body>
-    </html>
-    """
-
+"""
 
 if __name__ == "__main__":
     import uvicorn
