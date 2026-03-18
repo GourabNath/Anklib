@@ -135,35 +135,49 @@ def ui():
                 }
 
                 async function uploadFile() {
-                    const fileInput = document.getElementById('fileInput');
-                    const file = fileInput.files[0];
+    // Get the file input element
+    const fileInput = document.getElementById('fileInput');
 
-                    // Prevent request if no file is selected
-                    if (!file) {
-                        alert("Please select a file");
-                        return;
-                    }
+    // Get the selected file (first file from input)
+    const file = fileInput.files[0];
 
-                    // Prepare form data for multipart upload
-                    const formData = new FormData();
-                    formData.append("file", file);
+    // Get the button element to control its state (disable/enable)
+    const button = document.querySelector("button");
 
-                    // Provide immediate feedback while processing
-                    document.getElementById("resultBox").textContent = "Processing...";
+    // Guard clause: stop if no file is selected
+    if (!file) {
+        alert("Please select a file");
+        return;
+    }
 
-                    // Send request to backend extraction endpoint
-                    const response = await fetch("/anklib/extract", {
-                        method: "POST",
-                        body: formData
-                    });
+    // Prepare form data for sending file to backend
+    const formData = new FormData();
+    formData.append("file", file);
 
-                    // Parse JSON response from API
-                    const data = await response.json();
+    // UI FEEDBACK: indicate processing has started
+    button.disabled = true;                 // prevent multiple clicks
+    button.textContent = "Processing...";   // update button text
 
-                    // Display formatted result in UI
-                    document.getElementById("resultBox").textContent =
-                        JSON.stringify(data, null, 2);
-                }
+    // Show immediate feedback in result box
+    document.getElementById("resultBox").textContent = "Processing...";
+
+    // Send POST request to backend endpoint
+    const response = await fetch("/anklib/extract", {
+        method: "POST",
+        body: formData
+    });
+
+    // Parse JSON response from backend
+    const data = await response.json();
+
+    // Display formatted JSON result in UI
+    document.getElementById("resultBox").textContent =
+        JSON.stringify(data, null, 2);
+
+    // RESET UI: restore button to original state
+    button.disabled = false;
+    button.textContent = "Extract Metadata";
+}
             </script>
         </body>
     </html>
