@@ -143,10 +143,10 @@ def ui():
 
                 /* Value */
                 .field-value {
-                    font-size: 18px;
+                    font-size: 16px;
                     font-weight: 500;
                     color: #222;
-                    margin-top: 5px;
+                    margin-top: 1px;
 
                     /* Ensure long text wraps properly */
                     word-wrap: break-word;
@@ -173,7 +173,7 @@ def ui():
 
                 <button id="extractBtn" onclick="uploadFile()">Extract Metadata</button>
 
-                <h3>Result:</h3>
+                
                 <!-- ✅ switched from <pre> to <div> -->
                 <div id="resultBox">No result yet</div>
             </div>
