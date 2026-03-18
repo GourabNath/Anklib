@@ -36,24 +36,48 @@ async def extract(file: UploadFile = File(...)):
 
 
 
+
 @app.get("/", response_class=HTMLResponse)
 def ui():
     return """
     <html>
         <head>
-            <title>Anklib - Book Extractor</title>
+            <title>Anklib</title>
         </head>
         <body>
             <h2>📚 Anklib - Book Metadata Extractor</h2>
 
-            <form action="/anklib/extract" enctype="multipart/form-data" method="post">
-                <input name="file" type="file" accept="image/*" required>
-                <br><br>
-                <button type="submit">Extract Metadata</button>
-            </form>
+            <input id="fileInput" type="file" accept="image/*">
+            <br><br>
+            <button onclick="uploadFile()">Extract Metadata</button>
 
-            <p>Upload a book image and get structured metadata.</p>
+            <h3>Result:</h3>
+            <pre id="resultBox">No result yet</pre>
+
+            <script>
+                async function uploadFile() {
+                    const fileInput = document.getElementById('fileInput');
+                    const file = fileInput.files[0];
+
+                    if (!file) {
+                        alert("Please select a file");
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append("file", file);
+
+                    const response = await fetch("/anklib/extract", {
+                        method: "POST",
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    document.getElementById("resultBox").textContent =
+                        JSON.stringify(data, null, 2);
+                }
+            </script>
         </body>
     </html>
     """
-
