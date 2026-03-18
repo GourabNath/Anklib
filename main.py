@@ -89,11 +89,12 @@ def ui():
 }
 
                 pre {
-                    text-align: left;
-                    background: #eee;
-                    padding: 10px;
-                    border-radius: 5px;
-                }
+    text-align: left;
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 8px;
+    line-height: 1.6;
+}
 
                 img {
                     max-width: 100%;
@@ -171,8 +172,39 @@ def ui():
 
                         const data = await response.json();
 
-                        document.getElementById("resultBox").textContent =
-                            JSON.stringify(data, null, 2);
+                        // Extract structured data from response
+const book = data.data;
+
+// Build clean HTML output (user-friendly instead of JSON)
+let output = "";
+
+// Only show fields if they exist (avoids empty clutter)
+if (book.title) {
+    output += "<b>Title:</b> " + book.title + "<br><br>";
+}
+
+if (book.author) {
+    output += "<b>Author:</b> " + book.author + "<br><br>";
+}
+
+if (book.publisher) {
+    output += "<b>Publisher:</b> " + book.publisher + "<br><br>";
+}
+
+if (book.isbn) {
+    output += "<b>ISBN:</b> " + book.isbn + "<br><br>";
+}
+
+if (book.edition) {
+    output += "<b>Edition:</b> " + book.edition + "<br><br>";
+}
+
+if (book.price) {
+    output += "<b>Price:</b> " + book.price + "<br><br>";
+}
+
+// Inject formatted HTML into UI
+document.getElementById("resultBox").innerHTML = output;
 
                     } catch (error) {
 
