@@ -107,7 +107,7 @@ def ui():
                 <p>Upload a book image to extract metadata</p>
 
                 <!-- File input allows selecting image from device or camera (mobile-friendly) -->
-                <input id="fileInput" type="file" accept="image/*" onchange="previewImage()">
+                <input id="fileInput" type="file" accept="image/*" capture="environment" onchange="previewImage()">
                 <br><br>
 
                 <!-- Preview selected image before upload -->
