@@ -9,12 +9,35 @@ app = FastAPI()
 
 @app.get("/anklib")
 def home():
+    """
+    Description:
+        Health check endpoint to verify that the API is up and running.
+
+    Parameters:
+        None
+
+    Returns:
+        dict: A simple message confirming API availability.
+    """
     # Simple health check endpoint to verify API is running
     return {"message": "Welcome to Anklib API"}
 
 
 @app.post("/anklib/extract")
 async def extract(file: UploadFile = File(...)):
+    """
+    Description:
+        Accepts an image file, processes it, and extracts book metadata
+        using an LLM-based extraction service.
+
+    Parameters:
+        file (UploadFile): The uploaded image file containing book information.
+
+    Returns:
+        dict:
+            - On success: Contains extracted metadata.
+            - On failure: Contains error details.
+    """
 
     # Validate that the uploaded file is an image
     if not file.content_type.startswith("image/"):
@@ -47,6 +70,17 @@ async def extract(file: UploadFile = File(...)):
 
 @app.get("/", response_class=HTMLResponse)
 def ui():
+    """
+    Description:
+        Serves a simple HTML-based user interface for uploading book images
+        and displaying extracted metadata.
+
+    Parameters:
+        None
+
+    Returns:
+        HTMLResponse: A rendered HTML page with embedded CSS and JavaScript.
+    """
     # Serve a simple frontend UI for interacting with the API
     return """
     <html>
@@ -195,7 +229,17 @@ def ui():
 
             <script>
 
-                // Handles file selection and preview rendering
+                /**
+                 * Description:
+                 *     Handles file selection, updates UI with selected file name,
+                 *     and displays a preview of the selected image.
+                 *
+                 * Parameters:
+                 *     None (reads from DOM input element)
+                 *
+                 * Returns:
+                 *     None
+                 */
                 function handleFileSelect() {
                     const file = document.getElementById('fileInput').files[0];
                     const preview = document.getElementById('preview');
@@ -211,7 +255,17 @@ def ui():
                     }
                 }
 
-                // Handles file upload and API call
+                /**
+                 * Description:
+                 *     Uploads the selected image file to the backend API,
+                 *     retrieves extracted metadata, and updates the UI.
+                 *
+                 * Parameters:
+                 *     None (reads from DOM input element)
+                 *
+                 * Returns:
+                 *     None
+                 */
                 async function uploadFile() {
 
                     const fileInput = document.getElementById('fileInput');
