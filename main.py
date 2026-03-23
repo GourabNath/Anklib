@@ -1,9 +1,10 @@
-from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, File, UploadFile, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from services.extractor import extract_book_metadata
 from utils.image import encode_image
+from services.sheets import save_to_sheets  # 🆕 NEW
 
-# Initialize FastAPI app instance
+# Initialize FastAPI app
 app = FastAPI()
 
 
@@ -11,15 +12,14 @@ app = FastAPI()
 def home():
     """
     Description:
-        Health check endpoint to verify that the API is up and running.
+        Health check endpoint to verify that the API is running.
 
     Parameters:
         None
 
     Returns:
-        dict: A simple message confirming API availability.
+        dict: Simple welcome message.
     """
-    # Simple health check endpoint to verify API is running
     return {"message": "Welcome to Anklib API"}
 
 
@@ -27,174 +27,157 @@ def home():
 async def extract(file: UploadFile = File(...)):
     """
     Description:
-        Accepts an image file, processes it, and extracts book metadata
-        using an LLM-based extraction service.
+        Accepts an image file, converts it to base64, and extracts
+        book metadata using an LLM-based service.
 
     Parameters:
-        file (UploadFile): The uploaded image file containing book information.
+        file (UploadFile): Uploaded image file.
 
     Returns:
         dict:
-            - On success: Contains extracted metadata.
-            - On failure: Contains error details.
+            - status: success/error
+            - data: extracted metadata (if successful)
     """
 
-    # Validate that the uploaded file is an image
+    # Validate file type
     if not file.content_type.startswith("image/"):
         return {"error": "Only image files are supported"}
 
     try:
-        # Read the uploaded file content as bytes
+        # Read file as bytes
         content = await file.read()
 
-        # Convert image bytes into base64 string (required for LLM processing)
+        # Convert image to base64
         image_b64 = encode_image(content)
 
-        # Call extraction service (likely an LLM) to get book metadata
+        # Call LLM extractor
         result = extract_book_metadata(image_b64)
 
-        # Return structured success response
         return {
             "status": "success",
             "data": result
         }
 
     except Exception as e:
-        # Catch and return any runtime errors
         return {
             "status": "error",
             "message": str(e)
         }
 
 
+# 🆕 NEW ENDPOINT: Save extracted metadata in google sheets
+@app.post("/anklib/confirm")
+async def confirm(request: Request):
+    """
+    Description:
+        Receives user-edited metadata and saves it to Google Sheets.
+    """
+    data = await request.json()
+
+    # 🆕 Save to Google Sheets
+    save_to_sheets(data)
+
+    return {"status": "saved"}
+
+
+# Handles user-confirmed / edited metadata
+@app.post("/anklib/confirm")
+async def confirm(request: Request):
+    """
+    Description:
+        Receives user-reviewed (and possibly edited) metadata from the UI.
+        This acts as the human-in-the-loop validation layer.
+
+    Parameters:
+        request (Request): Incoming request containing JSON payload.
+
+    Returns:
+        dict: Confirmation status.
+    """
+    # Extract JSON payload from request
+    data = await request.json()
+
+    # 🆕 For now: log the confirmed data (placeholder for DB / Sheets)
+    print("✅ Confirmed Data:", data)
+
+    return {"status": "saved"}
+
 
 @app.get("/", response_class=HTMLResponse)
 def ui():
     """
     Description:
-        Serves a simple HTML-based user interface for uploading book images
-        and displaying extracted metadata.
+        Serves the frontend UI for:
+        - Uploading an image
+        - Viewing extracted metadata
+        - Editing metadata
+        - Confirming and saving data
 
     Parameters:
         None
 
     Returns:
-        HTMLResponse: A rendered HTML page with embedded CSS and JavaScript.
+        HTMLResponse: UI page
     """
-    # Serve a simple frontend UI for interacting with the API
     return """
     <html>
         <head>
             <title>Anklib</title>
-
-            <!-- Ensures proper scaling on mobile devices -->
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
             <style>
-                /* Base page styling */
                 body {
-                    font-family: Arial, sans-serif;
-                    background-color: #f5f5f5;
+                    font-family: Arial;
+                    background: #f5f5f5;
                     text-align: center;
                     padding: 20px;
                 }
 
-                /* Card container for UI */
                 .container {
                     background: white;
                     padding: 25px;
                     border-radius: 12px;
                     max-width: 500px;
                     margin: auto;
-                    box-shadow: 0 0 10px rgba(0,0,0,0.1);
                 }
 
-                /* Green action button (Extract Metadata) */
                 button {
-                    background-color: #4CAF50;
+                    background: #4CAF50;
                     color: white;
-                    padding: 16px;
-                    font-size: 18px;
-                    font-weight: bold;
+                    padding: 14px;
                     border: none;
-                    border-radius: 10px;
+                    border-radius: 8px;
                     width: 100%;
-                    max-width: 400px;
-                    margin-top: 15px;
+                    margin-top: 10px;
                     cursor: pointer;
                 }
 
-                /* Disabled button state */
-                button:disabled {
-                    background-color: #999;
-                }
-
-                /* Blue upload button (custom file input trigger) */
                 .upload-btn {
                     display: block;
-                    background-color: #2196F3;
+                    background: #2196F3;
                     color: white;
-                    padding: 16px;
-                    font-size: 18px;
-                    font-weight: bold;
-                    border-radius: 10px;
+                    padding: 14px;
+                    border-radius: 8px;
                     cursor: pointer;
+                    margin-top: 10px;
+                }
+
+                input {
                     width: 100%;
-                    max-width: 400px;
-                    margin: 15px auto 0 auto;
-                    box-sizing: border-box;
+                    padding: 8px;
+                    margin-top: 5px;
+                    border-radius: 6px;
+                    border: 1px solid #ccc;
                 }
 
-                /* Hover effect for upload button */
-                .upload-btn:hover {
-                    background-color: #1976D2;
-                }
-
-                /* Displays selected file name */
-                .file-name {
-                    margin-top: 10px;
-                    font-size: 14px;
-                    color: #555;
-                }
-
-                /* Image preview styling */
-                img {
-                    max-width: 100%;
-                    margin-top: 10px;
-                    border-radius: 5px;
-                }
-
-                /* Result container */
-                #resultBox {
-                    text-align: center;
-                    background: #f9f9f9;
-                    padding: 20px;
-                    border-radius: 10px;
-                    margin-top: 10px;
-                }
-
-                /* Each metadata field block */
                 .field-block {
-                    margin-bottom: 20px;
+                    margin-bottom: 15px;
+                    text-align: left;
                 }
 
-                /* Field label (e.g., Title, Author) */
                 .field-label {
-                    font-size: 14px;
-                    font-weight: bold;
+                    font-size: 12px;
                     color: #777;
-                }
-
-                /* Field value (actual data) */
-                .field-value {
-                    font-size: 16px;
-                    font-weight: 500;
-                    color: #222;
-                    margin-top: 1px;
-
-                    /* Handle long text wrapping */
-                    word-wrap: break-word;
-                    overflow-wrap: break-word;
                 }
             </style>
         </head>
@@ -202,152 +185,143 @@ def ui():
         <body>
             <div class="container">
                 <h2>📚 Anklib</h2>
-                <p>Upload a book image to extract metadata</p>
 
-                <!-- Custom styled upload button -->
+                <!-- Upload button -->
                 <label for="fileInput" class="upload-btn">
-                    📸 Choose or Capture Image
+                    📸 Upload Image
                 </label>
 
                 <!-- Hidden file input -->
-                <input id="fileInput" type="file" accept="image/*" capture="environment"
+                <input id="fileInput" type="file" accept="image/*"
                        onchange="handleFileSelect()" style="display:none;">
 
-                <!-- Displays selected file name -->
-                <div id="fileName" class="file-name">No file selected</div>
-
                 <!-- Image preview -->
-                <img id="preview" style="display:none;" />
+                <img id="preview" style="display:none; max-width:100%; margin-top:10px;" />
 
-                <!-- Trigger extraction -->
+                <!-- Extract trigger -->
                 <button id="extractBtn" onclick="uploadFile()">Extract Metadata</button>
 
-                
-                <!-- Result display container -->
-                <div id="resultBox">No result yet</div>
+                <!-- 🆕 Editable metadata container -->
+                <div id="resultBox" style="margin-top:20px;"></div>
+
+                <!-- 🆕 Confirm button (hidden initially) -->
+                <button id="confirmBtn" onclick="confirmData()" style="display:none;">
+                    Confirm & Save
+                </button>
             </div>
 
             <script>
 
                 /**
                  * Description:
-                 *     Handles file selection, updates UI with selected file name,
-                 *     and displays a preview of the selected image.
-                 *
-                 * Parameters:
-                 *     None (reads from DOM input element)
-                 *
-                 * Returns:
-                 *     None
+                 *     Displays preview of selected image.
                  */
                 function handleFileSelect() {
                     const file = document.getElementById('fileInput').files[0];
                     const preview = document.getElementById('preview');
-                    const fileName = document.getElementById('fileName');
 
                     if (file) {
-                        // Create temporary URL for preview
                         preview.src = URL.createObjectURL(file);
                         preview.style.display = "block";
-
-                        // Show file name
-                        fileName.textContent = "Selected: " + file.name;
                     }
                 }
 
                 /**
                  * Description:
-                 *     Uploads the selected image file to the backend API,
-                 *     retrieves extracted metadata, and updates the UI.
-                 *
-                 * Parameters:
-                 *     None (reads from DOM input element)
-                 *
-                 * Returns:
-                 *     None
+                 *     Sends image to backend, receives extracted metadata,
+                 *     and renders editable fields.
                  */
                 async function uploadFile() {
 
-                    const fileInput = document.getElementById('fileInput');
-                    const file = fileInput.files[0];
-                    const button = document.getElementById("extractBtn");
+                    const file = document.getElementById('fileInput').files[0];
 
-                    // Ensure a file is selected
                     if (!file) {
-                        alert("Please select a file");
+                        alert("Select a file");
                         return;
                     }
 
-                    // Update UI to loading state
-                    button.disabled = true;
-                    button.textContent = "Processing...";
-                    document.getElementById("resultBox").textContent = "Processing...";
+                    const formData = new FormData();
+                    formData.append("file", file);
 
-                    try {
-                        // Prepare form data for POST request
-                        const formData = new FormData();
-                        formData.append("file", file);
+                    const res = await fetch("/anklib/extract", {
+                        method: "POST",
+                        body: formData
+                    });
 
-                        // Call backend extraction API
-                        const response = await fetch(window.location.origin + "/anklib/extract", {
-                            method: "POST",
-                            body: formData
-                        });
+                    const data = await res.json();
+                    const book = data.data;
 
-                        // Handle HTTP errors
-                        if (!response.ok) {
-                            throw new Error("Server error: " + response.status);
-                        }
-
-                        // Parse JSON response
-                        const data = await response.json();
-                        const book = data.data;
-
-                        // Helper function to generate HTML blocks for each field
-                        function createField(label, value) {
-                            return `
-                                <div class="field-block">
-                                    <div class="field-label">${label}</div>
-                                    <div class="field-value">${value}</div>
-                                </div>
-                            `;
-                        }
-
-                        let output = "";
-
-                        // Dynamically add only available fields
-                        if (book.title) output += createField("Title", book.title);
-                        if (book.author) output += createField("Author", book.author);
-                        if (book.publisher) output += createField("Publisher", book.publisher);
-                        if (book.isbn) output += createField("ISBN", book.isbn);
-                        if (book.edition) output += createField("Edition", book.edition);
-                        if (book.price) output += createField("Price", book.price);
-
-                        // Render result in UI
-                        document.getElementById("resultBox").innerHTML = output;
-
-                    } catch (error) {
-
-                        // Display error message in UI
-                        document.getElementById("resultBox").textContent =
-                            "❌ Error: " + error.message;
-
-                    } finally {
-
-                        // Reset button state
-                        button.disabled = false;
-                        button.textContent = "Extract Metadata";
+                    // 🆕 Creates editable input fields instead of static text
+                    function field(label, value) {
+                        return `
+                            <div class="field-block">
+                                <div class="field-label">${label}</div>
+                                <input id="${label}" value="${value || ""}">
+                            </div>
+                        `;
                     }
+
+                    let html = "";
+
+                    // 🆕 Render editable fields
+                    html += field("Title", book.title);
+                    html += field("Author", book.author);
+                    html += field("Publisher", book.publisher);
+                    html += field("ISBN", book.isbn);
+                    html += field("Edition", book.edition);
+                    html += field("Price", book.price);
+
+                    document.getElementById("resultBox").innerHTML = html;
+
+                    // 🆕 Show confirm button after extraction
+                    document.getElementById("confirmBtn").style.display = "block";
+                }
+
+
+                /**
+                 * Description:
+                 *     Collects user-edited values from input fields.
+                 */
+                function collectData() {
+                    return {
+                        title: document.getElementById("Title")?.value,
+                        author: document.getElementById("Author")?.value,
+                        publisher: document.getElementById("Publisher")?.value,
+                        isbn: document.getElementById("ISBN")?.value,
+                        edition: document.getElementById("Edition")?.value,
+                        price: document.getElementById("Price")?.value
+                    };
+                }
+
+
+                /**
+                 * Description:
+                 *     Sends user-confirmed metadata to backend.
+                 */
+                async function confirmData() {
+
+                    const payload = collectData();
+
+                    const res = await fetch("/anklib/confirm", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await res.json();
+
+                    alert("✅ Saved successfully!");
                 }
 
             </script>
-
         </body>
     </html>
     """
 
 
-# Entry point for running the app locally using Uvicorn
+# Entry point to run app locally
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000)
