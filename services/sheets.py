@@ -17,11 +17,11 @@ sheet = client.open("anklib_data").sheet1
 def save_to_sheets(data: dict):
     """
     Saves user-confirmed book metadata into Google Sheets
-    with stable headers and consistent alignment.
+    with formatted headers (bold + sentence case).
     """
 
-    # 🆕 UPDATED HEADERS
-    headers = [
+    # Internal keys (DO NOT CHANGE — used for mapping)
+    keys = [
         "timestamp",
         "title",
         "author",
@@ -29,8 +29,14 @@ def save_to_sheets(data: dict):
         "isbn",
         "edition",
         "price",
-        "accession_number",   # 🆕 NEW
-        "number_of_pages"     # 🆕 NEW
+        "accession_number",
+        "number_of_pages"
+    ]
+
+    # 🆕 FORMAT HEADERS → Sentence case + no underscores
+    headers = [
+        key.replace("_", " ").upper()
+        for key in keys
     ]
 
     existing_data = sheet.get_all_values()
@@ -41,7 +47,10 @@ def save_to_sheets(data: dict):
     elif existing_data[0] != headers:
         sheet.insert_row(headers, 1)
 
-    # 🆕 UPDATED ROW STRUCTURE
+    # 🆕 MAKE HEADER ROW BOLD
+    sheet.format("1:1", {"textFormat": {"bold": True}})
+
+    # Row data mapping (unchanged logic)
     row = [
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         data.get("title") or "",
@@ -50,8 +59,8 @@ def save_to_sheets(data: dict):
         data.get("isbn") or "",
         data.get("edition") or "",
         data.get("price") or "",
-        data.get("accession_number") or "",   # 🆕 NEW
-        data.get("number_of_pages") or ""     # 🆕 NEW
+        data.get("accession_number") or "",
+        data.get("number_of_pages") or ""
     ]
 
     print("Writing row:", row)
