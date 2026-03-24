@@ -1,8 +1,8 @@
 from fastapi import FastAPI, File, UploadFile, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from services.extractor import extract_book_metadata
 from utils.image import encode_image
-from services.sheets import save_to_sheets  # 🆕 NEW
+from services.sheets import save_to_sheets
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -10,47 +10,18 @@ app = FastAPI()
 
 @app.get("/anklib")
 def home():
-    """
-    Description:
-        Health check endpoint to verify that the API is running.
-
-    Parameters:
-        None
-
-    Returns:
-        dict: Simple welcome message.
-    """
     return {"message": "Welcome to Anklib API"}
 
 
 @app.post("/anklib/extract")
 async def extract(file: UploadFile = File(...)):
-    """
-    Description:
-        Accepts an image file, converts it to base64, and extracts
-        book metadata using an LLM-based service.
 
-    Parameters:
-        file (UploadFile): Uploaded image file.
-
-    Returns:
-        dict:
-            - status: success/error
-            - data: extracted metadata (if successful)
-    """
-
-    # Validate file type
     if not file.content_type.startswith("image/"):
         return {"error": "Only image files are supported"}
 
     try:
-        # Read file as bytes
         content = await file.read()
-
-        # Convert image to base64
         image_b64 = encode_image(content)
-
-        # Call LLM extractor
         result = extract_book_metadata(image_b64)
 
         return {
@@ -65,60 +36,21 @@ async def extract(file: UploadFile = File(...)):
         }
 
 
-# 🆕 NEW ENDPOINT: Save extracted metadata in google sheets
+# ✅ SINGLE confirm endpoint (removed duplicate)
 @app.post("/anklib/confirm")
 async def confirm(request: Request):
     """
-    Description:
-        Receives user-edited metadata and saves it to Google Sheets.
+    Receives user-edited metadata and saves it to Google Sheets.
     """
     data = await request.json()
 
-    # 🆕 Save to Google Sheets
     save_to_sheets(data)
-
-    return {"status": "saved"}
-
-
-# Handles user-confirmed / edited metadata
-@app.post("/anklib/confirm")
-async def confirm(request: Request):
-    """
-    Description:
-        Receives user-reviewed (and possibly edited) metadata from the UI.
-        This acts as the human-in-the-loop validation layer.
-
-    Parameters:
-        request (Request): Incoming request containing JSON payload.
-
-    Returns:
-        dict: Confirmation status.
-    """
-    # Extract JSON payload from request
-    data = await request.json()
-
-    # 🆕 For now: log the confirmed data (placeholder for DB / Sheets)
-    print("✅ Confirmed Data:", data)
 
     return {"status": "saved"}
 
 
 @app.get("/", response_class=HTMLResponse)
 def ui():
-    """
-    Description:
-        Serves the frontend UI for:
-        - Uploading an image
-        - Viewing extracted metadata
-        - Editing metadata
-        - Confirming and saving data
-
-    Parameters:
-        None
-
-    Returns:
-        HTMLResponse: UI page
-    """
     return """
     <html>
         <head>
@@ -186,25 +118,19 @@ def ui():
             <div class="container">
                 <h2>📚 Anklib</h2>
 
-                <!-- Upload button -->
                 <label for="fileInput" class="upload-btn">
                     📸 Upload Image
                 </label>
 
-                <!-- Hidden file input -->
                 <input id="fileInput" type="file" accept="image/*"
                        onchange="handleFileSelect()" style="display:none;">
 
-                <!-- Image preview -->
                 <img id="preview" style="display:none; max-width:100%; margin-top:10px;" />
 
-                <!-- Extract trigger -->
                 <button id="extractBtn" onclick="uploadFile()">Extract Metadata</button>
 
-                <!-- 🆕 Editable metadata container -->
                 <div id="resultBox" style="margin-top:20px;"></div>
 
-                <!-- 🆕 Confirm button (hidden initially) -->
                 <button id="confirmBtn" onclick="confirmData()" style="display:none;">
                     Confirm & Save
                 </button>
@@ -212,10 +138,6 @@ def ui():
 
             <script>
 
-                /**
-                 * Description:
-                 *     Displays preview of selected image.
-                 */
                 function handleFileSelect() {
                     const file = document.getElementById('fileInput').files[0];
                     const preview = document.getElementById('preview');
@@ -226,11 +148,6 @@ def ui():
                     }
                 }
 
-                /**
-                 * Description:
-                 *     Sends image to backend, receives extracted metadata,
-                 *     and renders editable fields.
-                 */
                 async function uploadFile() {
 
                     const file = document.getElementById('fileInput').files[0];
@@ -251,7 +168,6 @@ def ui():
                     const data = await res.json();
                     const book = data.data;
 
-                    // 🆕 Creates editable input fields instead of static text
                     function field(label, value) {
                         return `
                             <div class="field-block">
@@ -263,7 +179,6 @@ def ui():
 
                     let html = "";
 
-                    // 🆕 Render editable fields
                     html += field("Title", book.title);
                     html += field("Author", book.author);
                     html += field("Publisher", book.publisher);
@@ -271,17 +186,14 @@ def ui():
                     html += field("Edition", book.edition);
                     html += field("Price", book.price);
 
-                    document.getElementById("resultBox").innerHTML = html;
+                    // 🆕 NEW FIELDS
+                    html += field("Accession Number", book.accession_number);
+                    html += field("Number of Pages", book.number_of_pages);
 
-                    // 🆕 Show confirm button after extraction
+                    document.getElementById("resultBox").innerHTML = html;
                     document.getElementById("confirmBtn").style.display = "block";
                 }
 
-
-                /**
-                 * Description:
-                 *     Collects user-edited values from input fields.
-                 */
                 function collectData() {
                     return {
                         title: document.getElementById("Title")?.value,
@@ -289,15 +201,14 @@ def ui():
                         publisher: document.getElementById("Publisher")?.value,
                         isbn: document.getElementById("ISBN")?.value,
                         edition: document.getElementById("Edition")?.value,
-                        price: document.getElementById("Price")?.value
+                        price: document.getElementById("Price")?.value,
+
+                        // 🆕 NEW FIELDS
+                        accession_number: document.getElementById("Accession Number")?.value,
+                        number_of_pages: document.getElementById("Number of Pages")?.value
                     };
                 }
 
-
-                /**
-                 * Description:
-                 *     Sends user-confirmed metadata to backend.
-                 */
                 async function confirmData() {
 
                     const payload = collectData();
@@ -310,7 +221,7 @@ def ui():
                         body: JSON.stringify(payload)
                     });
 
-                    const result = await res.json();
+                    await res.json();
 
                     alert("✅ Saved successfully!");
                 }
@@ -321,7 +232,6 @@ def ui():
     """
 
 
-# Entry point to run app locally
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000)
