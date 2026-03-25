@@ -17,10 +17,14 @@ sheet = client.open("anklib_data").sheet1
 def save_to_sheets(data: dict):
     """
     Saves user-confirmed book metadata into Google Sheets
-    with formatted headers (bold + sentence case).
+    with clean formatting:
+    - Sentence case headers
+    - Bold header
+    - Frozen header row
+    - Auto column width
+    - Center-aligned numeric columns
     """
 
-    # Internal keys (DO NOT CHANGE — used for mapping)
     keys = [
         "timestamp",
         "title",
@@ -33,24 +37,25 @@ def save_to_sheets(data: dict):
         "number_of_pages"
     ]
 
-    # 🆕 FORMAT HEADERS → Sentence case + no underscores
-    headers = [
-        key.replace("_", " ").upper()
-        for key in keys
-    ]
+    # Format headers → sentence case
+    headers = [key.replace("_", " ").capitalize() for key in keys]
 
     existing_data = sheet.get_all_values()
 
-    # Ensure headers exist only once
     if not existing_data:
         sheet.append_row(headers)
     elif existing_data[0] != headers:
         sheet.insert_row(headers, 1)
 
-    # 🆕 MAKE HEADER ROW BOLD
-    sheet.format("1:1", {"textFormat": {"bold": True}})
+    # FORMAT HEADER (bold)
+    sheet.format("1:1", {
+        "textFormat": {"bold": True}
+    })
 
-    # Row data mapping (unchanged logic)
+    # FREEZE HEADER ROW
+    sheet.freeze(rows=1)
+
+    # Row data
     row = [
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         data.get("title") or "",
@@ -63,6 +68,13 @@ def save_to_sheets(data: dict):
         data.get("number_of_pages") or ""
     ]
 
-    print("Writing row:", row)
-
     sheet.append_row(row)
+
+    # AUTO RESIZE COLUMNS
+    sheet.columns_auto_resize(0, len(headers))
+
+    # CENTER ALIGN NUMERIC COLUMNS
+    # Column index: 1-based in Sheets
+    # price → column 7, pages → column 9
+    sheet.format("G:G", {"horizontalAlignment": "CENTER"})
+    sheet.format("I:I", {"horizontalAlignment": "CENTER"})
